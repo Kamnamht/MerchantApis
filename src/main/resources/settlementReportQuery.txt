@@ -1,0 +1,114 @@
+select
+"S.No",
+"Merchant Id",
+"Merchant MSISDN",
+"Merchant Name",
+"Merchant Account Number",
+"Merchant Settlement Type",
+"TXN_DATE",
+"Bank Txn Ref No",
+"Partner Txn Ref No",
+"Customer MSISDN",
+"CUST_TYPE",
+"Transaction Type",
+"ORIG_AMNT",
+"Commision(DR)",
+"Commision(CR)",
+"CGST(DR)",
+"CGST(CR)",
+"SGST(DR)",
+"SGST(CR)",
+"IGST(CR)",
+"IGST(DR)",
+"UGST(DR)",
+"UGST(CR)",
+"TDS(DR)",
+"TDS(CR)",
+"SC(DR)",
+"SC(CR)",
+(case when "Transaction Type"='C' then
+"Net Credit Amnt" else -1*"Net Credit Amnt" end) "Net Credit Amnt",
+"Store Id",
+"Till ID",
+"UTR Num",
+"Settlement Date"
+from
+(
+select
+rownum "S.No",
+mast.cod_cust_id "Merchant Id",
+mast.COD_CUST_NATL_ID "Merchant MSISDN",
+seg.SHOP_NAME "Merchant Name",
+txn.cod_acct_no "Merchant Account Number",
+MSF_PRINCIPLE "Merchant Settlement Type",
+TO_CHAR(txn.DAT_TXN,'DD-MON-YYYY') Txn_Date,
+txn.ref_txn "Bank Txn Ref No",
+nb.REF_USR_NO "Partner Txn Ref No",
+cim.COD_CUST_NATL_ID "Customer MSISDN",
+cim.flg_cust_typ CUST_TYPE,
+txn.COD_DRCR "Transaction Type",
+(case when txn.COD_TXN_MNEMONIC not in ('5003','50003') then txn.AMT_TXN  end) Orig_Amnt,
+(CASE WHEN txn.COD_DRCR='D' THEN abs(gst.AMT_CHARGE_LCY)   END) "Commision(DR)",
+(CASE WHEN txn.COD_DRCR='C' THEN abs(gst.AMT_CHARGE_LCY)   END) "Commision(CR)",
+(CASE WHEN txn.COD_DRCR='D' THEN abs(gst1.AMT_CGST_LCY)    END) "CGST(DR)",
+(CASE WHEN txn.COD_DRCR='C' THEN abs(gst1.AMT_CGST_LCY)   END) "CGST(CR)",
+(CASE WHEN txn.COD_DRCR='D' THEN abs(gst1.AMT_SGST_LCY)    END) "SGST(DR)",
+(CASE WHEN txn.COD_DRCR='C' THEN abs(gst1.AMT_SGST_LCY)   END) "SGST(CR)",
+NULL "IGST(CR)"              ,
+NULL "IGST(DR)",
+(CASE WHEN txn.COD_DRCR='D' THEN abs(gst1.AMT_UGST_LCY)    END) "UGST(DR)",
+(CASE WHEN txn.COD_DRCR='C' THEN abs(gst1.AMT_UGST_LCY)   END) "UGST(CR)",
+(case when nb.COD_TXN_MNEMONIC like '26007' and txn.COD_DRCR='D' then nb.AMT_TXN end) "TDS(DR)",
+(case when nb.COD_TXN_MNEMONIC like '26007' and txn.COD_DRCR='C' then nb.AMT_TXN end) "TDS(CR)",
+(case when nb.COD_TXN_MNEMONIC like '26011' and txn.COD_DRCR='D' then nb.AMT_TXN end) "SC(DR)",
+(case when nb.COD_TXN_MNEMONIC like '26011' and txn.COD_DRCR='C' then nb.AMT_TXN end) "SC(CR)",
+nvl((case when txn.COD_TXN_MNEMONIC<>'5003' then txn.AMT_TXN  end),0)-
+(nvl(abs(gst.AMT_CHARGE_LCY),0)+nvl(abs(gst1.AMT_CGST_LCY),0)+nvl(abs(gst1.AMT_UGST_LCY),0)+nvl(abs(gst1.AMT_SGST_LCY),0)
+-nvl((case when nb.COD_TXN_MNEMONIC like '26007' then nb.AMT_TXN end),0)
+-nvl((case when nb.COD_TXN_MNEMONIC like '26011'  then nb.AMT_TXN end),0)
+) "Net Credit Amnt",
+REGEXP_SUBSTR(TXT_ADDL_DETAILS_FROM,'[^|]+',1,1) "Store Id",
+REGEXP_SUBSTR(TXT_ADDL_DETAILS_FROM,'[^|]+',1,2) "Till ID",
+REF_UTR_NO "UTR Num",
+TO_CHAR(DAT_ACTION,'DD-MON-YYYY') "Settlement Date"
+from
+fcrhost.ch_x_merch_txnlog_detail txn,
+fcrhost.ch_nobook nb,
+(
+select AMT_CHARGE_LCY,AMT_CGST_LCY,AMT_SGST_LCY,REF_TXN_NO,AMT_UGST_LCY,FLG_GST_COMPUTE from  fcrhost.SC_GST_TXN_DTLS
+union all
+select AMT_CHARGE_LCY,AMT_CGST_LCY,AMT_SGST_LCY,REF_TXN_NO,AMT_UGST_LCY,FLG_GST_COMPUTE from  fcrhost.SC_GST_TXN_DTLS_MMDD
+) gst,
+(
+select AMT_CHARGE_LCY,AMT_CGST_LCY,AMT_SGST_LCY,REF_TXN_NO,AMT_UGST_LCY,FLG_GST_COMPUTE from  fcrhost.SC_GST_TXN_DTLS
+union all
+select AMT_CHARGE_LCY,AMT_CGST_LCY,AMT_SGST_LCY,REF_TXN_NO,AMT_UGST_LCY,FLG_GST_COMPUTE from  fcrhost.SC_GST_TXN_DTLS_MMDD
+) gst1,
+fcrhost.ci_custmast mast,
+fcrhost.CH_ACCT_MAST act_mast,
+fcrhost.ci_x_merchant_seg_details seg,
+fcrhost.XFACE_DETAILS_TXNLOG XF,
+fcrhost.CI_CUSTMAST cim
+where
+   txn.REF_TXN=nb.REF_TXN_NO
+and txn.AMT_TXN=nb.AMT_TXN
+and txn.COD_ACCT_NO=nb.COD_ACCT_NO
+and txn.REF_TXN=gst.ref_txn_no(+)
+and gst.REF_TXN_NO=gst1.ref_txn_no(+)
+and  txn.cod_acct_no=act_mast.cod_acct_no
+and act_mast.cod_cust=MAST.COD_CUST_ID
+and mast.cod_cust_id=seg.cod_cust_id
+and txn.REF_TXN=xf.REF_TXN_NO
+and xf.COD_CUST_ID_FROM=cim.cod_cust_id
+and gst.FLG_GST_COMPUTE(+)='Y'
+and gst1.FLG_GST_COMPUTE(+)='N'
+and mast.flg_mnt_status='A'
+and act_mast.flg_mnt_status='A'
+and cim.flg_mnt_status='A'
+and seg.flg_mnt_status='A'
+and MAST.FLG_CUST_TYP in ('MER','BIL')
+and txn.DAT_POST between TO_DATE(:FROM_DATE,'DD/MM/YYYY') and TO_DATE(:TO_DATE,'DD/MM/YYYY')
+and mast.cod_cust_natl_id = :MERCHANT_ID
+and txn.COD_TXN_MNEMONIC not in ('5003','50003')
+and txn.ref_utr_no is not null
+)

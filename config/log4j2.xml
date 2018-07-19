@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+       <Properties>
+              <Property name="LOG_PATTERN" value="%d [%thread] [%-5level] [%c{1.}] - %msg%n" />
+       </Properties>
+       <Appenders>
+ 
+              <Console name="ConsoleAppender" target="SYSTEM_OUT" follow="true" ignoreExceptions="false">
+                     <PatternLayout pattern="${LOG_PATTERN}" />
+              </Console>
+ 
+              <Async name="Async">
+                     <AppenderRef ref="FileAppender" />
+              </Async>
+ 
+              <Async name="AsyncAdd">
+                     <AppenderRef ref="FileAppenderAdd" />
+              </Async>
+ 
+              <Async name="AsyncRoot">
+                     <AppenderRef ref="FileAppenderRoot" />
+              </Async>
+ 
+              <RollingFile name="FileAppender" fileName="merchantapi/merchantapi_app.log"
+                     filePattern="merchantapi/merchantapi_app.log-%d{yyyy-MM-dd}-%i.log">
+                     <RegexFilter regex=".*com.airtel.merchant.merchantapis.*"
+                           onMatch="ACCEPT" onMismatch="DENY" />
+                     <ThresholdFilter level="DEBUG" onMatch="ACCEPT"
+                           onMismatch="DENY" />
+                     <PatternLayout>
+                           <Pattern>${LOG_PATTERN}</Pattern>
+                     </PatternLayout>
+                     <Policies>
+                           <SizeBasedTriggeringPolicy size="10MB" />
+                     </Policies>
+                     <DefaultRolloverStrategy max="100" />
+              </RollingFile>
+ 
+              <RollingFile name="FileAppenderAdd" fileName="merchantapi/merchantapi_add.log"
+                     filePattern="merchantapi/merchantapi_add.log-%d{yyyy-MM-dd}-%i.log">
+                     <ThresholdFilter level="DEBUG" onMatch="ACCEPT"
+                           onMismatch="DENY" />
+                     <PatternLayout>
+                           <Pattern>${LOG_PATTERN}</Pattern>
+                     </PatternLayout>
+                     <Policies>
+                           <SizeBasedTriggeringPolicy size="10MB" />
+                     </Policies>
+                     <DefaultRolloverStrategy max="100" />
+              </RollingFile>
+ 
+              <RollingFile name="FileAppenderRoot" fileName="merchantapi/merchantapi_root.log"
+                     filePattern="merchantapi/merchantapi_root.log-%d{yyyy-MM-dd}-%i.log">
+                     <PatternLayout>
+                           <Pattern>${LOG_PATTERN}</Pattern>
+                     </PatternLayout>
+                     <Policies>
+                           <SizeBasedTriggeringPolicy size="10MB" />
+                     </Policies>
+                     <DefaultRolloverStrategy max="100" />
+              </RollingFile>
+       </Appenders>
+ 
+       <Loggers>
+              <Logger name="com.airtel.merchant" level="DEBUG" additivity="false">
+                     <AppenderRef level="DEBUG" ref="AsyncAdd" />
+                     <AppenderRef level="INFO" ref="Async" />
+                  <AppenderRef level="INFO" ref="ConsoleAppender" />
+              </Logger>
+ 
+              <Root level="INFO" additivity="false">
+                     <AppenderRef level="INFO" ref="AsyncRoot" />
+                     <AppenderRef level="INFO" ref="ConsoleAppender" />
+              </Root>
+ 
+ 
+       </Loggers>
+</Configuration>
+ 

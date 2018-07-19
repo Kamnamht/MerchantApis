@@ -1,0 +1,30 @@
+SELECT /*+ PARALLEL(4) */ business_engine_session_id,TO_CHAR(Txn_Date_Time, 'yyyy-MM-dd HH:mm:ss') as Txn_Date_Time,Uc_Id,Custom_Col_19,Fe_Id,Customer_Id,Error_Message,Custom_Col_1,Custom_Col_20,Service_Provider_Session_Id,Custom_Col_13,REFUND_AMOUNT,ASSISTED_MOB_NO from (select m.business_engine_session_id,m.Txn_Date_Time,m.Uc_Id,m.Custom_Col_19,m.Fe_Id,m.Customer_Id,m.Error_Message,m.Custom_Col_1,m.Custom_Col_20,m.Service_Provider_Session_Id,m.Custom_Col_13,m.REFUND_AMOUNT,m.ASSISTED_MOB_NO, rownum r from (select
+A.business_engine_session_id,
+A.Txn_Date_Time,
+A.Uc_Id,
+A.Custom_Col_19,
+A.Fe_Id,
+A.Customer_Id,
+A.Error_Message,
+A.Custom_Col_1,
+A.Custom_Col_20,
+A.Service_Provider_Session_Id,
+A.Custom_Col_13,
+(CASE WHEN A.Custom_Col_20 = 'SUCCESS'
+                Then(Select Sum(Custom_Col_1) From Volt_Txn_Log B Where B.Service_Provider_Session_Id=A.Service_Provider_Session_Id  And B.Custom_Col_20='REFUND_SUCCESS')
+  WHEN A.Custom_Col_20 != 'SUCCESS'
+                Then 0
+END ) as "REFUND_AMOUNT",
+A.custom_col_29 || '|' || A.custom_col_3 as ASSISTED_MOB_NO 
+From Volt_Txn_Log A
+Where A.Uc_Id In ('OTPTXN','ECOM','PAYOTC','CMSFundTransfer','UPIIN','DIRECTFUNDTRANSFER','AssistedSbaDr')
+And A.Custom_Col_20 In ('SUCCESS','REFUND_SUCCESS','REFUND_FAILED','REFUND_PENDING','REFUNDED')
+and (A.custom_col_20 = :TRANSACTION_STATUS or :TRANSACTION_STATUS  = '1')
+And A.Counter_Party_Id in (:MSISDN , :ACCNO)
+and A.txn_status in (0,1)
+And (A.business_engine_session_id = :TRANSACTION_ID OR :TRANSACTION_ID = '1')
+And (A.service_provider_session_id = :PARTNER_TRANSACTION_ID OR :PARTNER_TRANSACTION_ID = '1')
+And (A.Custom_Col_19 = :MOBILE_NUMBER OR :MOBILE_NUMBER = '1')
+And A.Txn_Date_Time >= TO_DATE(:FROM_DATE, 'dd-MM-yy') And A.Txn_Date_Time < (to_date(:TO_DATE,'dd-MM-yy')+1)
+Order by A.txn_date_time desc) m)
+where r> :LOWER_LIMIT and r <= :UPPER_LIMIT
